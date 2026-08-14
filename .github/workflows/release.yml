@@ -1,0 +1,41 @@
+name: Package and release module
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate module scripts
+        run: bash -n config.sh customize.sh ddns.sh ddns_service.sh uninstall.sh
+
+      - name: Build flashable ZIP
+        id: package
+        shell: bash
+        run: |
+          set -euo pipefail
+          package="ipv6-ddns-${GITHUB_REF_NAME}.zip"
+          zip -r "$package" \
+            module.prop config.sh customize.sh ddns.sh ddns_service.sh uninstall.sh README.md
+          unzip -Z1 "$package" | grep -qx 'module.prop'
+          unzip -Z1 "$package" | grep -qx 'customize.sh'
+          sha256sum "$package" > "$package.sha256"
+          echo "package=$package" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            "${{ steps.package.outputs.package }}" \
+            "${{ steps.package.outputs.package }}.sha256" \
+            --title "IPv6 DDNS ${GITHUB_REF_NAME}" \
+            --generate-notes

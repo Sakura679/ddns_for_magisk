@@ -1,0 +1,5 @@
+id=ipv6-ddns
+name=IPv6 DDNS (Cloudflare)
+version=2.0
+author=Sakura679
+description=极简 IPv6 DDNS for Magisk
