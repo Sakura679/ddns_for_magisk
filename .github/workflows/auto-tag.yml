@@ -29,9 +29,13 @@ jobs:
           fi
 
       - name: Create and push tag
+        env:
+          PAT: ${{ secrets.PAT }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           TAG="v${{ steps.version.outputs.version }}"
           git tag "$TAG"
-          git push origin "$TAG"
+          # Use PAT for pushing to avoid triggering workflows with GITHUB_TOKEN
+          remote_repo="https://x-access-token:${PAT}@github.com/${{ github.repository }}.git"
+          git push "$remote_repo" "$TAG"
