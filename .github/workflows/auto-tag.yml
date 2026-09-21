@@ -21,21 +21,20 @@ jobs:
           VERSION=$(grep '^version=' module.prop | cut -d'=' -f2)
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Check if tag already exists
+      - name: Debug: list tags
         run: |
-          if git rev-parse "v${{ steps.version.outputs.version }}" >/dev/null 2>&1; then
-            echo "Tag v${{ steps.version.outputs.version }} already exists"
-            exit 0
-          fi
+          echo "Tags in repository:"
+          git tag -l | head -20
 
-      - name: Create and push tag
+      - name: Create and push tag (force)
         env:
           PAT: ${{ secrets.PAT }}
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           TAG="v${{ steps.version.outputs.version }}"
-          git tag "$TAG"
+          # Overwrite the tag locally if it exists
+          git tag -f "$TAG"
           # Use PAT for pushing to avoid triggering workflows with GITHUB_TOKEN
           remote_repo="https://x-access-token:${PAT}@github.com/${{ github.repository }}.git"
-          git push "$remote_repo" "$TAG"
+          git push -f "$remote_repo" "$TAG"
