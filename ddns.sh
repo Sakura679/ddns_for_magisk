@@ -5,7 +5,27 @@ MODDIR=${0%/*}
 # 加载配置
 . "$MODDIR/config.sh"
 
-log() { echo -t ipv6-ddns "$*"; }
+# 日志文件
+LOG_FILE="$MODDIR/run.log"
+
+# 日志函数：同时输出到控制台和日志文件
+log() {
+    tee -a "$LOG_FILE"
+}
+
+# 日志轮转：如果日志文件超过1MB，保留最后500行
+rotate_log() {
+    local max_size=$((1024 * 1024)) # 1MB
+    if [ -f "$LOG_FILE" ]; then
+        local size=$(wc -c < "$LOG_FILE")
+        if [ "$size" -gt "$max_size" ]; then
+            tail -n 500 "$LOG_FILE" > "$LOG_FILE.tmp" && mv "$LOG_FILE.tmp" "$LOG_FILE"
+        fi
+    fi
+}
+
+# 初始化日志轮转
+rotate_log
 
 while true; do
     # 1. 获取所有全局单播 IPv6 地址列表（兼容 toybox/grep 无 -P）
@@ -14,20 +34,20 @@ while true; do
 
     # 2. 无 IPv6 直接下一轮
     if [ -z "$IP6_LIST" ]; then
-        echo "未获取到全局 IPv6，等待下一轮"
-        sleep 300
+        log "未获取到全局 IPv6，等待下一轮"
+        sleep $CHECK_INTERVAL
         continue
     fi
 
     # 3. IP 列表与上次 DDNS 的 IP 比较
     if [ "$IP6_LIST" = "$LAST_DDNS_IP6_LIST" ]; then
-        echo "IPv6 列表未变化，跳过 DDNS 更新"
-        sleep 300
+        log "IPv6 列表未变化，跳过 DDNS 更新"
+        sleep $CHECK_INTERVAL
         continue
     fi
 
     # 4. 检测到变化，从新列表中取出变化的 IP（只取一个）
-    echo "检测到 IPv6 变化，准备更新 DDNS"
+    log "检测到 IPv6 变化，准备更新 DDNS"
     IP6=$(echo "$IP6_LIST" | while read ip; do
         if ! echo "$LAST_DDNS_IP6_LIST" | grep -q "^$ip$"; then
             echo "$ip"
@@ -36,8 +56,8 @@ while true; do
     done)
 
     if [ -z "$IP6" ]; then
-        echo "未找到变化的 IP"
-        sleep 300
+        log "未找到变化的 IP"
+        sleep $CHECK_INTERVAL
         continue
     fi
 
@@ -61,10 +81,10 @@ EOF
 
     # 6. 判断成功
     if echo "$RESP" | grep -q '"success":true'; then
-        echo "更新成功: $IP6"
+        log "更新成功: $IP6"
     else
-        echo "更新失败: $(echo "$RESP" | grep -o '"message":"[^"]*"' | cut -d'"' -f4)"
-        sleep 300
+        log "更新失败: $(echo "$RESP" | grep -o '"message":"[^"]*"' | cut -d'"' -f4)"
+        sleep $CHECK_INTERVAL
         continue
     fi
 
@@ -72,5 +92,5 @@ EOF
     LAST_DDNS_IP6_LIST="$IP6_LIST"
 
     # 8. 等待下一轮检查
-    sleep 300
+    sleep $CHECK_INTERVAL
 done

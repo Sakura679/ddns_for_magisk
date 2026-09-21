@@ -1,5 +1,14 @@
 #!/system/bin/sh
 
+# 模块目录和日志文件
+MODDIR="/data/adb/modules/ipv6-ddns"
+LOG_FILE="$MODDIR/run.log"
+
+# 日志函数：同时输出到控制台和日志文件
+log() {
+    tee -a "$LOG_FILE"
+}
+
 (
   # 等待开机完成，最多等 120 秒
   WAIT=0
@@ -9,14 +18,14 @@
   done
 
   if [ $WAIT -ge 12 ]; then
-      echo -t ipv6-ddns "等待开机完成超时，强制继续"
+      log "等待开机完成超时，强制继续"
   fi
 
-  if [ -f "/data/adb/modules/ipv6-ddns/ddns.sh" ]; then
-    chmod 755 /data/adb/modules/ipv6-ddns/ddns.sh
-    nohup sh /data/adb/modules/ipv6-ddns/ddns.sh > /dev/null 2>&1 &
-    echo "运行成功"
+  if [ -f "$MODDIR/ddns.sh" ]; then
+    chmod 755 "$MODDIR/ddns.sh"
+    nohup sh "$MODDIR/ddns.sh" > /dev/null 2>&1 &
+    log "运行成功"
   else
-    echo "未找到文件 '/data/adb/modules/ipv6-ddns/ddns.sh'"
+    log "未找到文件 '$MODDIR/ddns.sh'"
   fi
 )&
