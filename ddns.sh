@@ -8,9 +8,6 @@ MODDIR=${0%/*}
 # 日志文件
 LOG_FILE="$MODDIR/run.log"
 
-# 日志开关，设置为true以启用日志文件写入
-ENABLE_LOG=true
-
 # 日志函数：带时间戳，可选输出到日志文件
 log_msg() {
     local msg="$1"
@@ -49,13 +46,12 @@ while true; do
 
     # 3. IP 列表与上次 DDNS 的 IP 比较
     if [ "$IP6_LIST" = "$LAST_DDNS_IP6_LIST" ]; then
-        log_msg "IPv6 列表未变化，跳过 DDNS 更新"
+        # log_msg "IPv6 列表未变化，跳过 DDNS 更新"
         sleep $CHECK_INTERVAL
         continue
     fi
 
     # 4. 检测到变化，从新列表中取出变化的 IP（只取一个）
-    log_msg "检测到 IPv6 变化，准备更新 DDNS"
     IP6=$(echo "$IP6_LIST" | while read ip; do
         if ! echo "$LAST_DDNS_IP6_LIST" | grep -q "^$ip$"; then
             echo "$ip"
@@ -64,12 +60,13 @@ while true; do
     done)
 
     if [ -z "$IP6" ]; then
-        log_msg "未找到变化的 IP"
+        # log_msg "未找到变化的 IP"
         sleep $CHECK_INTERVAL
         continue
     fi
 
     # 5. 组装 JSON（变量正确展开）
+    log_msg "检测到 IPv6 变化，准备更新 DDNS"
     JSON=$(cat <<EOF
 {
   "name": "$SUB_DOMAIN",
